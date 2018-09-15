@@ -11,6 +11,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.IBinder;
 import android.support.v4.content.LocalBroadcastManager;
@@ -129,11 +131,14 @@ public class SensorService extends Service implements SensorEventListener {
     }
 
     private class SensorEventLoggerTask extends AsyncTask<SensorEvent, Void, String[]> {
+        private WifiManager fm = (WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+
         @Override
         protected String[] doInBackground(SensorEvent... events) {
             if(flag) {
                 one = true;
                 String[] data = new String[5];
+                String[] dataAux = new String[5];
                 long currentTime = System.currentTimeMillis();
                 SensorEvent event = events[0];
                 Sensor sensor = event.sensor;
@@ -147,6 +152,8 @@ public class SensorService extends Service implements SensorEventListener {
                             if ((currentTimestamp - laccLastTimestamp) <= 2.2 * sampleInterval) {
                                 break;
                             } else {
+                                /*scan wifi ever specified interval */
+                                WifiInfo wifiInfo = this.fm.getConnectionInfo();
                                 laccLastTimestamp = currentTimestamp;
                                 data[1] = "1";  //1 denotes sensor type "LINEAR_ACCELERATION"
                                 //TODO: get values
@@ -156,7 +163,12 @@ public class SensorService extends Service implements SensorEventListener {
                                 data[0] = (String.valueOf(currentTime));
                                 data[0] = data[0].substring(data[0].length() - 6);
                                 mSensorData.add(data);
-                                //Log.e("sensor", Arrays.toString(data));
+                                /* auxiliary rssi append behind sensor data*/
+                                dataAux[1] = "3"; // denote type wifi rssi
+                                dataAux[2] = String.valueOf(wifiInfo.getRssi());
+                                dataAux[0] = data[0]; // use the same time stamp of accelerometer data.
+                                mSensorData.add(data);
+                                mSensorData.add(dataAux);//add rssi to send buffer
                             }
                             break;
                         case Sensor.TYPE_GYROSCOPE:
